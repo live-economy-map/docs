@@ -1,12 +1,19 @@
-## Project: Shadow Economy Map — Addis Ababa Growth Detection MVP
-This becomes `prisma/schema.prisma` (or equivalent ORM schema) almost line for line — write it carefully here first.
+## Project: Shadow Economy Map — Addis Ababa Growth Detection MVP (V1)
+**Links back to:** [1. Problem & Solution Statement], [2. Functional & Non-Functional Requirements], [3. Use Cases], [roadmap.md]
 
-**Design decisions carried over from discussion:**
-- There are no public user accounts. The map is fully anonymous and public (per FR-01, FR-21, FR-22). The only authenticated role in this schema is **Admin** — a single project/data-team login, no customer accounts, no multi-tier permissions.
-- There is no forecasting entity anywhere below. This schema stores only **detected/observed** signals and scores for past and current periods — nothing here predicts a future period. If forecasting is added in a later phase, it is a distinct future-phase ticket (new entity, new methodology, new validation approach), not a small addition to `CompositeScoreSnapshot`.
-- Composite score snapshots are never overwritten in place — each period's score is stored as its own row, specifically so the time-slider (FR-02) can show genuine historical change rather than only the latest recomputation.
+This becomes `prisma/schema.prisma` (or equivalent ORM schema) almost line for line.
 
-⚠️ **DESIGN NOTE (flagged for review):** the `ScoreWeightConfig` and `GridCell` shapes below were derived from the Functional Requirements doc (FR-14 through FR-19) and general geospatial-grid conventions, not from a verified technical spec — because none exists yet for this project at time of writing. Everything marked **[DESIGN DECISION — NEEDS CONFIRMATION]** should be reviewed and confirmed (or corrected) by whoever owns the pipeline/scoring implementation before being treated as final, especially the grid resolution and the weight-versioning approach.
+**Design decisions carried over from discussion (finalized):**
+- There are no public user accounts. The map is fully anonymous and public. The only authenticated role in this schema is **Admin** — a single project/data-team login, no customer accounts, no multi-tier permissions. (Public accounts are a V2 item — not part of this schema.)
+- There is no forecasting entity anywhere below. This schema stores only **detected/observed** signals and scores for past and current periods. Forecasting is a V5 item, dependent on a currently unavailable ground-truth data partnership — a distinct future schema, not an addition to `CompositeScoreSnapshot`.
+- Composite score snapshots are never overwritten in place — each period's score is stored as its own row, so the time-slider (FR-02) can show genuine historical change.
+- **GDELT does not contribute to the composite score formula.** GDELT is independent, human-verified event evidence used only for case-study validation — it has no weight in `ScoreWeightConfig` and no numeric role in `CompositeScoreSnapshot`. The composite score is a function of VIIRS, GHSL, and RWI only.
+- **Spatial data uses plain types, not PostGIS.** `boundaryGeoJson` is a plain JSON column and coordinates are plain floats — no PostGIS extension for V1. This was a deliberate choice to avoid unnecessary learning-curve risk for a fixed, pre-generated grid at MVP scale. Native PostGIS geometry types are a Grand Vision technical upgrade, not a V1 requirement.
+- **Grid cell size is fixed, not dynamic.** V1 uses a single fixed cell size for the whole grid, chosen to match the resolution of the coarsest input source (Meta RWI, ~2.4km). A dynamic/multi-resolution grid (adapting cell size to map zoom level) is a Grand Vision improvement, not a V1 requirement — building it now would be premature engineering effort ahead of proving the core detection claim.
+
+**Remaining open items (finalized in principle, one numeric value and one formula detail still pending):**
+- Exact grid cell size in meters — methodology is settled (fixed, matched to RWI resolution); the specific number is a parameter to finalize during pipeline implementation, not an open architectural question.
+- Whether `ScoreWeightConfig` weights must sum to 1.0, and whether the formula is a simple weighted sum (current assumption) — enforced at the application layer, not the schema layer, and should be settled before FR-22 is implemented.
 
 ---
 
@@ -16,12 +23,12 @@ This becomes `prisma/schema.prisma` (or equivalent ORM schema) almost line for l
 |---|---|
 | Admin | A project/data-team member with access to the protected admin area |
 | DataSource | One of the four external data sources feeding the system (VIIRS, GHSL, Meta RWI, GDELT) |
-| PipelineRun | A single attempted data pull/refresh for one data source, logged for observability (FR-14, FR-16, FR-20) |
+| PipelineRun | A single attempted data pull/refresh for one data source, logged for observability |
 | GridCell | A single spatial cell in the Addis Ababa grid over which signals and scores are computed |
 | SignalValue | A single data source's raw and normalized value for one grid cell in one time period |
-| ScoreWeightConfig ⚠️ | A versioned set of per-source weights used to compute the composite score (FR-18) |
+| ScoreWeightConfig | A versioned set of per-source weights (VIIRS, GHSL, RWI only) used to compute the composite score |
 | CompositeScoreSnapshot | The computed composite growth score for one grid cell in one time period, tied to the weight config used to produce it |
-| CaseStudy | An admin-curated, independently verified known-growth location shown on the public map (FR-06, FR-07, FR-08, FR-19) |
+| CaseStudy | An admin-curated, independently verified known-growth location shown on the public map, validated in part using GDELT evidence |
 
 ---
 
@@ -42,7 +49,7 @@ This becomes `prisma/schema.prisma` (or equivalent ORM schema) almost line for l
 - `scoreWeightConfigs`: one Admin → many ScoreWeightConfig (`createdBy`)
 - `caseStudies`: one Admin → many CaseStudy (`createdBy`)
 
-Note: there is intentionally no `role` field — per scope, there is only one admin type in this release (no multi-admin permission tiers, per the Non-Functional Requirements doc).
+No `role` field — only one admin type exists in V1 (no multi-admin permission tiers).
 
 ---
 
@@ -62,7 +69,7 @@ Note: there is intentionally no `role` field — per scope, there is only one ad
 - `signalValues`: one DataSource → many SignalValue
 - `pipelineRuns`: one DataSource → many PipelineRun
 
-Seed data: this table is expected to contain exactly four rows at launch (VIIRS, GHSL, RWI, GDELT) — it exists as a table rather than a hardcoded enum specifically so new sources can be added later (Grand Vision) without a schema migration.
+Seed data: exactly four rows at launch. GDELT's `SignalValue` rows, if stored at all, are for internal/case-study reference only — GDELT is never referenced by `ScoreWeightConfig`.
 
 ---
 
@@ -76,18 +83,18 @@ Seed data: this table is expected to contain exactly four rows at launch (VIIRS,
 | status | Enum (RunStatus) | required, default RUNNING | `RUNNING \| SUCCESS \| FAILED` |
 | startedAt | DateTime | default now() | |
 | completedAt | DateTime? | nullable | Set when the run finishes (success or failure) |
-| recordsProcessed | Int? | nullable | Count of grid cells/records successfully ingested, for observability |
+| recordsProcessed | Int? | nullable | Count of grid cells/records successfully ingested |
 | errorMessage | String? | nullable | Populated only on failure |
 
 **Relations:**
 - `dataSource`: many PipelineRun → one DataSource
 - `triggeredBy`: many PipelineRun → one Admin
 
-Drives FR-15 ("last successful update" timestamp) and FR-16 (health status) — both are derived by querying the most recent `PipelineRun` per `DataSource`, rather than stored redundantly on `DataSource` itself.
+Drives FR-19 ("last successful update" timestamp), FR-20 (health status), and FR-24 (run log) — all derived by querying `PipelineRun` rows per `DataSource`, not stored redundantly on `DataSource` itself.
 
 ---
 
-#### GridCell ⚠️ [DESIGN DECISION — NEEDS CONFIRMATION: exact resolution/size]
+#### GridCell
 
 | Field | Type | Constraints | Notes |
 |---|---|---|---|
@@ -96,17 +103,18 @@ Drives FR-15 ("last successful update" timestamp) and FR-16 (health status) — 
 | cellCol | Int | required | Column index within the Addis Ababa grid |
 | centroidLat | Float | required | Used for map rendering and case-study proximity checks |
 | centroidLng | Float | required | |
-| boundaryGeoJson | Json | required | Polygon boundary of the cell, used for map rendering |
+| boundaryGeoJson | Json | required | Polygon boundary of the cell (plain JSON, no PostGIS) |
+| areaLabel | String? | nullable | Human-readable nearest-area name, shown in the click-to-inspect panel (FR-04) |
 | createdAt | DateTime | default now() | |
 
 **Relations:**
 - `signalValues`: one GridCell → many SignalValue
 - `compositeScoreSnapshots`: one GridCell → many CompositeScoreSnapshot
-- `caseStudies`: one GridCell → many CaseStudy (nullable link — a case study may reference a specific cell, or just store its own coordinates)
+- `caseStudies`: one GridCell → many CaseStudy (nullable link)
 
-**Constraints:** unique composite on `(cellRow, cellCol)` — one cell per grid position.
+**Constraints:** unique composite on `(cellRow, cellCol)`.
 
-Open question for the pipeline owner: what cell size (e.g., 500m, 1km) actually matches the resolution of the coarsest input source (Meta RWI, at ~2.4km) without producing false precision. This directly affects how many `GridCell` rows exist and should be settled before the grid is generated, not after.
+Grid is generated once, at a single fixed resolution matched to RWI's ~2.4km native resolution (exact meters value to be finalized during pipeline implementation).
 
 ---
 
@@ -117,22 +125,22 @@ Open question for the pipeline owner: what cell size (e.g., 500m, 1km) actually 
 | id | String (UUID) | PK, default uuid() | |
 | gridCellId | String | FK → GridCell.id, required | |
 | dataSourceId | String | FK → DataSource.id, required | |
-| period | DateTime | required | Represents the time period this value applies to (e.g., first day of the month) |
+| period | DateTime | required | Time period this value applies to (e.g., first day of the month) |
 | rawValue | Float | required | The source's original value for this cell/period |
-| normalizedValue | Float | required | Value scaled to a common 0–1 (or similar) range for use in the composite score formula |
+| normalizedValue | Float | required | Value scaled to a common 0–1 range |
 | createdAt | DateTime | default now() | |
 
 **Relations:**
 - `gridCell`: many SignalValue → one GridCell
 - `dataSource`: many SignalValue → one DataSource
 
-**Constraints:** unique composite on `(gridCellId, dataSourceId, period)` — one value per cell, per source, per period; a re-pull for the same period updates the existing row rather than duplicating it.
+**Constraints:** unique composite on `(gridCellId, dataSourceId, period)`.
 
-This table is what powers the FR-04 signal-breakdown panel — each cell/period's `SignalValue` rows across all four sources are what's shown to a visitor who clicks a cell.
+Powers the FR-04 signal-breakdown panel. For VIIRS/GHSL/RWI, these values feed `CompositeScoreSnapshot`. GDELT rows here (if stored) are for reference only and are not read by the composite score computation.
 
 ---
 
-#### ScoreWeightConfig ⚠️ [DESIGN DECISION — NEEDS CONFIRMATION]
+#### ScoreWeightConfig
 
 | Field | Type | Constraints | Notes |
 |---|---|---|---|
@@ -140,18 +148,17 @@ This table is what powers the FR-04 signal-breakdown panel — each cell/period'
 | viirsWeight | Float | required | |
 | ghslWeight | Float | required | |
 | rwiWeight | Float | required | |
-| gdeltWeight | Float | required | |
 | createdById | String | FK → Admin.id, required | |
-| isActive | Boolean | default false | Only one config should be active at a time; used for the current computation |
+| isActive | Boolean | default false | Only one config should be active at a time |
 | createdAt | DateTime | default now() | |
 
 **Relations:**
 - `createdBy`: many ScoreWeightConfig → one Admin
 - `compositeScoreSnapshots`: one ScoreWeightConfig → many CompositeScoreSnapshot
 
-Weights are versioned (each edit creates a new row rather than mutating an existing one) so that every `CompositeScoreSnapshot` can point back to exactly which weighting produced it — this matters for the Reproducibility non-functional requirement (a reviewer needs to be able to trace a given score back to the exact formula used, not just the current one).
+Only 3 weight fields — no `gdeltWeight` (see design decisions above). Weights are versioned (each edit creates a new row) so every `CompositeScoreSnapshot` traces back to the exact formula used, supporting the Reproducibility non-functional requirement.
 
-Open question for the pipeline owner: should weights sum to 1.0 (enforced at the application layer, since it's awkward to enforce in the schema itself), and is a simple weighted sum the intended formula, or something more complex (e.g., non-linear combination)? This affects only application logic, not the schema shape, but should be settled before FR-18 is implemented.
+Open detail to settle before FR-22 is implemented: whether weights must sum to 1.0, and whether the formula is a simple weighted sum (current assumption) — application-layer logic, not a schema question.
 
 ---
 
@@ -163,17 +170,17 @@ Open question for the pipeline owner: should weights sum to 1.0 (enforced at the
 | gridCellId | String | FK → GridCell.id, required | |
 | period | DateTime | required | Same period convention as SignalValue |
 | scoreWeightConfigId | String | FK → ScoreWeightConfig.id, required | |
-| compositeScore | Float | required | The final computed growth score for this cell/period |
-| isComplete | Boolean | default true | False if one or more source signals were missing/incomplete for this cell/period — see UC-09 alternate flow |
+| compositeScore | Float | required | `(viirsWeight × viirs_norm) + (ghslWeight × ghsl_norm) + (rwiWeight × rwi_norm)` |
+| isComplete | Boolean | default true | False if VIIRS, GHSL, or RWI data was missing for this cell/period |
 | createdAt | DateTime | default now() | |
 
 **Relations:**
 - `gridCell`: many CompositeScoreSnapshot → one GridCell
 - `scoreWeightConfig`: many CompositeScoreSnapshot → one ScoreWeightConfig
 
-**Constraints:** unique composite on `(gridCellId, period, scoreWeightConfigId)` — recomputing with the same weight config for the same cell/period updates that row; recomputing with a *new* weight config creates a new row, preserving prior results for comparison rather than silently replacing them.
+**Constraints:** unique composite on `(gridCellId, period, scoreWeightConfigId)`.
 
-Note: an incomplete snapshot (`isComplete: false`) is still stored, not discarded — the public map is expected to visually distinguish incomplete cells rather than hide them, so visitors aren't misled by a confident-looking score built on partial data.
+An incomplete snapshot (`isComplete: false`) is still stored, not discarded — the public map visually distinguishes incomplete cells rather than hiding them.
 
 ---
 
@@ -182,17 +189,18 @@ Note: an incomplete snapshot (`isComplete: false`) is still stored, not discarde
 | Field | Type | Constraints | Notes |
 |---|---|---|---|
 | id | String (UUID) | PK, default uuid() | |
-| gridCellId | String? | FK → GridCell.id, nullable | Optional — a case study can reference a specific cell for cross-linking, but stores its own coordinates independently below |
-| name | String | required | e.g., "Bole Arabsa growth corridor" |
+| gridCellId | String? | FK → GridCell.id, nullable | Optional cross-link |
+| name | String | required | e.g., "CMC growth corridor" |
 | latitude | Float | required | |
 | longitude | Float | required | |
 | evidenceDescription | String | required | Short explanation of the independently verified growth (FR-07) |
-| evidenceUrl | String? | nullable | Link to supporting news/report, where available |
+| evidenceUrl | String? | nullable | Link to supporting news/report — typically sourced via the tiered evidence process (official announcements → market reports → infrastructure coverage → local news) |
+| evidenceTier | Enum (EvidenceTier)? | nullable | `OFFICIAL \| MARKET_REPORT \| INFRASTRUCTURE \| LOCAL_NEWS` — records which tier of the sourcing process this evidence came from, for transparency |
 | scoreRiseDate | DateTime | required | Date the composite score began rising for this location |
-| confirmedDate | DateTime | required | Date the growth was independently confirmed (news/report date) |
+| confirmedDate | DateTime | required | Date the growth was independently confirmed (news/report date). Application logic should treat `scoreRiseDate <= confirmedDate` as the expected validation pattern |
 | beforeImageUrl | String? | nullable | For the before/after comparison (FR-08) |
 | afterImageUrl | String? | nullable | |
-| isPublished | Boolean | default false | Admin must explicitly publish before it appears on the public map |
+| isPublished | Boolean | default false | Admin must explicitly publish before it appears on the public map or case studies list page |
 | createdById | String | FK → Admin.id, required | |
 | createdAt | DateTime | default now() | |
 | updatedAt | DateTime | updatedAt | |
@@ -201,7 +209,7 @@ Note: an incomplete snapshot (`isComplete: false`) is still stored, not discarde
 - `gridCell`: many CaseStudy → one GridCell (nullable)
 - `createdBy`: many CaseStudy → one Admin
 
-Why `isPublished` defaults to false: case studies represent a factual claim ("this area's growth was independently verified") and should require a deliberate admin action to go live, rather than appearing automatically on creation/draft.
+`isPublished` defaults to false: case studies are a factual claim and require deliberate admin action to go live.
 
 ---
 
@@ -242,6 +250,7 @@ erDiagram
         float centroidLat
         float centroidLng
         json boundaryGeoJson
+        string areaLabel
         datetime createdAt
     }
     SIGNAL_VALUE {
@@ -258,7 +267,6 @@ erDiagram
         float viirsWeight
         float ghslWeight
         float rwiWeight
-        float gdeltWeight
         string createdById FK
         boolean isActive
         datetime createdAt
@@ -280,6 +288,7 @@ erDiagram
         float longitude
         string evidenceDescription
         string evidenceUrl
+        string evidenceTier
         datetime scoreRiseDate
         datetime confirmedDate
         string beforeImageUrl
@@ -308,24 +317,25 @@ erDiagram
 | Item | Detail |
 |---|---|
 | GridCell(cellRow, cellCol) | Unique composite — one cell per grid position |
-| SignalValue(gridCellId, dataSourceId, period) | Unique composite — one value per cell/source/period; re-pulls update in place |
-| SignalValue(period) | Index — the time-slider (FR-02) queries by period across many cells at once |
-| CompositeScoreSnapshot(gridCellId, period, scoreWeightConfigId) | Unique composite — see 4.2 note on preserving prior computations under different weight configs |
-| CompositeScoreSnapshot(period) | Index — same time-slider access pattern as SignalValue |
-| PipelineRun(dataSourceId, startedAt) | Index — supports "most recent run per source" lookups for FR-15/FR-16 without scanning the full table |
-| ScoreWeightConfig(isActive) | Partial/filtered index recommended — only one config should be active at a time; enforce "only one active" at the application layer, since a database-level partial-unique constraint depends on the specific database engine |
-| CaseStudy(isPublished) | Index — the public map only ever queries published case studies |
-| No cascade delete: DataSource → SignalValue | Deliberately not cascading. Deactivating a source (`isActive: false`) should never silently delete historical signal data; use `onDelete: Restrict`, and disable via the `isActive` flag instead |
-| No cascade delete: GridCell → CompositeScoreSnapshot | Deliberately not cascading, for the same reason — historical scores must survive even if a grid is later regenerated at a different resolution. In practice, `GridCell` rows are not expected to be deleted once the grid is generated |
-| Cascade delete: ScoreWeightConfig → (none) | `CompositeScoreSnapshot` references a `ScoreWeightConfig` but should use `onDelete: Restrict`, not cascade — a weight config should never be deletable once it has snapshots depending on it; deactivate via `isActive` instead |
-| Float for signal/score values | `Float` (not `Decimal`) is acceptable here, unlike the money fields in a typical e-commerce schema — these are scientific/statistical values, not currency, so standard floating-point precision is sufficient |
-| No currency fields anywhere | This schema has no monetary data at all — the MVP is not a commercial/paid product (per Non-Functional/Out-of-Scope sections in doc 2) |
+| SignalValue(gridCellId, dataSourceId, period) | Unique composite — one value per cell/source/period |
+| SignalValue(period) | Index — the time-slider (FR-02) queries by period across many cells |
+| CompositeScoreSnapshot(gridCellId, period, scoreWeightConfigId) | Unique composite — preserves prior computations under different weight configs |
+| CompositeScoreSnapshot(period) | Index — same time-slider access pattern |
+| PipelineRun(dataSourceId, startedAt) | Index — supports "most recent run per source" lookups for FR-19/FR-20 |
+| ScoreWeightConfig(isActive) | Only one config active at a time; enforced at the application layer |
+| CaseStudy(isPublished) | Index — the public map and case studies list page only query published entries |
+| No cascade delete: DataSource → SignalValue | `onDelete: Restrict`; disable via `isActive` instead of deleting |
+| No cascade delete: GridCell → CompositeScoreSnapshot | `onDelete: Restrict`; historical scores must survive even if the grid is later regenerated |
+| No cascade delete: ScoreWeightConfig → CompositeScoreSnapshot | `onDelete: Restrict`; a weight config must never be deletable once snapshots depend on it — deactivate via `isActive` |
+| Float for signal/score values | `Float`, not `Decimal` — these are scientific/statistical values, not currency |
+| No currency fields anywhere | V1 has no monetary data — no payments, subscriptions, or billing (those are V3+ items) |
+| No User/Account table | V1 has no public user accounts — only `Admin`. A `User` entity is introduced in V2, out of scope for this schema |
 
 ---
 
 ### 4.5 Migration Notes
 
-_(To be filled in as the schema is implemented — record any deviations from this design, and update the corresponding [DESIGN DECISION — NEEDS CONFIRMATION] flags above once resolved, rather than leaving them stale.)_
+_(To be filled in as the schema is implemented — record any deviations from this design.)_
 
 ---
 
