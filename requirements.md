@@ -1,5 +1,6 @@
 ## Project: Shadow Economy Map — Addis Ababa Growth Detection MVP (V1)
 **Links back to:** [1. Problem & Solution Statement], [roadmap.md]
+**Links forward to:** [3. Use Cases]
 
 ---
 
@@ -21,38 +22,38 @@ Requirements are grouped in the order a real user moves through the system: anon
 | FR-08 | A visitor can view a before/after satellite or built-up-area comparison for at least one case-study location | Should | UC-05 |
 | FR-09 | A visitor can view a short "About / Methodology" page explaining what the composite score means, which data sources feed it, how case studies are validated, and its known limitations | Must | UC-06 |
 | FR-10 | The map defaults to the most recent available time period on first load | Should | UC-01 |
-| FR-11 | A visitor can view a landing/home page introducing the tool before entering the map | Should | UC-12 |
-| FR-12 | A visitor can view a standalone Case Studies list page, showing all published case studies independent of the map view | Should | UC-13 |
-| FR-13 | A first-time visitor sees a brief legend/onboarding overlay explaining what the map colors and scores mean | Should | UC-14 |
-| FR-14 | A visitor can use a natural-language search to query the map (e.g., "show me areas near Bole with rising construction"), which is parsed into map filters (location, time range, signal type) | Should | UC-15 |
+| FR-11 | A visitor can view a landing/home page introducing the tool before entering the map | Should | UC-07 |
+| FR-12 | A visitor can view a standalone Case Studies list page, showing all published case studies independent of the map view | Should | UC-08 |
+| FR-13 | A first-time visitor sees a brief legend/onboarding overlay explaining what the map colors and scores mean | Should | UC-09 |
+| FR-14 | A visitor can use a natural-language search to query the map (e.g., "show me areas near Bole with rising construction"), which is parsed into map filters (location, time range, signal type) | Should | UC-10 |
 
 #### B. Admin Authentication & Access
 
 | ID | Requirement | Priority | Linked Use Case |
 |---|---|---|---|
-| FR-15 | The project/data team can log in to a protected admin area not accessible to public visitors | Must | UC-07 |
-| FR-16 | An invalid admin login (wrong username/password) returns a clear error without revealing which field was incorrect | Must | UC-07 |
-| FR-17 | Admin sessions expire after a period of inactivity | Should | UC-07 |
+| FR-15 | The project/data team can log in to a protected admin area not accessible to public visitors | Must | UC-11 |
+| FR-16 | An invalid admin login (wrong username/password) returns a clear error without revealing which field was incorrect | Must | UC-11 |
+| FR-17 | Admin sessions expire after a period of inactivity | Should | UC-11 |
 
 #### C. Admin / Data Pipeline Management
 
 | ID | Requirement | Priority | Linked Use Case |
 |---|---|---|---|
-| FR-18 | An admin can trigger a data refresh pull for a given source (VIIRS, GHSL, Meta RWI, GDELT) for the Addis Ababa bounding box | Must | UC-08 |
-| FR-19 | An admin can view the last successful update timestamp for each data source | Must | UC-08 |
-| FR-20 | An admin can view a status/health indicator per source (e.g., last pull succeeded, failed, or is stale beyond an expected threshold) | Must | UC-08 |
-| FR-21 | An admin can trigger a recomputation of the composite growth score after new source data is pulled | Must | UC-09 |
-| FR-22 | An admin can view and adjust the relative weighting of each of the four data sources in the composite score formula, for experimentation and tuning during methodology development | Should | UC-09 |
-| FR-23 | An admin can add, edit, or remove a case-study location (name, coordinates, supporting evidence link/description, score-rise date, confirmed date, before/after imagery) | Must | UC-10 |
-| FR-24 | An admin can view a log of past data pipeline runs, including timestamp, source, and success/failure status | Should | UC-08 |
-| FR-25 | The project team has access to an internal AI-assisted search workflow to help surface candidate case-study locations from news sources, for manual verification before publishing (not a public-facing feature) | Could | UC-16 |
+| FR-18 | An admin can trigger a data refresh pull for a given source (VIIRS, GHSL, Meta RWI, GDELT) for the Addis Ababa bounding box | Must | UC-12 |
+| FR-19 | An admin can view the last successful update timestamp for each data source | Must | UC-12 |
+| FR-20 | An admin can view a status/health indicator per source (e.g., last pull succeeded, failed, or is stale beyond an expected threshold) | Must | UC-12 |
+| FR-21 | An admin can trigger a recomputation of the composite growth score after new source data is pulled | Must | UC-13 |
+| FR-22 | An admin can view and adjust the relative weighting of each of the four data sources in the composite score formula, for experimentation and tuning during methodology development | Should | UC-13 |
+| FR-23 | An admin can add, edit, or remove a case-study location (name, coordinates, supporting evidence link/description, score-rise date, confirmed date, before/after imagery) | Must | UC-14 |
+| FR-24 | An admin can view a log of past data pipeline runs, including timestamp, source, and success/failure status | Should | UC-12 |
+| FR-25 | The project team has access to an internal AI-assisted search workflow to help surface candidate case-study locations from news sources, for manual verification before publishing (not a public-facing feature) | Could | UC-15 |
 
 #### D. Cross-Cutting
 
 | ID | Requirement | Priority | Linked Use Case |
 |---|---|---|---|
-| FR-26 | All public-facing pages (map, landing, case studies, methodology) render and function correctly on mobile screen sizes | Must | UC-11 |
-| FR-27 | The admin area renders and functions correctly on standard desktop screen sizes; mobile support for admin is not required | Won't (V1) | UC-11 |
+| FR-26 | All public-facing pages (map, landing, case studies, methodology) render and function correctly on mobile screen sizes | Must | UC-16 |
+| FR-27 | The admin area renders and functions correctly on standard desktop screen sizes; mobile support for admin is not required | Won't (V1) | UC-16 |
 | FR-28 | Map interactions (pan, zoom, time-slider, cell selection) respond without a full page reload | Must | UC-01 |
 
 **Numbering convention:** FR-01, FR-02... never renumber once the project moves past this finalized draft — deprecate with a strikethrough note instead, so future references (issues, methodology write-ups) don't silently point at the wrong requirement.
