@@ -3,6 +3,8 @@
 
 Each use case maps to at least one Functional Requirement and, later, at least one API endpoint. Use cases are numbered sequentially in the order they appear below, matching the order a real user (visitor, then admin) moves through the system.
 
+**Numbering discipline (read before adding any future use case):** New use cases — including any added for V2 and beyond — must be appended as new numbers (UC-17, UC-18, ...) at the end of this document, even if they would conceptually fit earlier alongside a related section. Never renumber existing use cases and never insert a new use case in the middle of the sequence to preserve topical grouping — doing so breaks every existing FR-to-UC reference in Doc 2 and any external references (issues, code comments). If topical grouping matters for readability, use section headers and cross-references, not renumbering.
+
 ---
 
 ### A. Visitor / Public Map Exploration
