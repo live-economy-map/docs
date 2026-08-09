@@ -26,7 +26,8 @@ This becomes `prisma/schema.prisma` (or equivalent ORM schema) almost line for l
 | PipelineRun | A single attempted data pull/refresh for one data source, logged for observability |
 | GridCell | A single spatial cell in the Addis Ababa grid over which signals and scores are computed |
 | SignalValue | A single data source's raw and normalized value for one grid cell in one time period |
-| ScoreWeightConfig | A versioned set of per-source weights (VIIRS, GHSL, RWI only) used to compute the composite score |
+| ScoreWeightConfig | A versioned container for a set of per-source weights used to compute the composite score |
+| SourceWeight | A single data source's weight within a specific ScoreWeightConfig (join table, extensible to new sources without migration) |
 | CompositeScoreSnapshot | The computed composite growth score for one grid cell in one time period, tied to the weight config used to produce it |
 | CaseStudy | An admin-curated, independently verified known-growth location shown on the public map, validated in part using GDELT evidence |
 
@@ -145,20 +146,39 @@ Powers the FR-04 signal-breakdown panel. For VIIRS/GHSL/RWI, these values feed `
 | Field | Type | Constraints | Notes |
 |---|---|---|---|
 | id | String (UUID) | PK, default uuid() | |
-| viirsWeight | Float | required | |
-| ghslWeight | Float | required | |
-| rwiWeight | Float | required | |
 | createdById | String | FK → Admin.id, required | |
 | isActive | Boolean | default false | Only one config should be active at a time |
 | createdAt | DateTime | default now() | |
 
 **Relations:**
 - `createdBy`: many ScoreWeightConfig → one Admin
+- `sourceWeights`: one ScoreWeightConfig → many SourceWeight
 - `compositeScoreSnapshots`: one ScoreWeightConfig → many CompositeScoreSnapshot
 
-Only 3 weight fields — no `gdeltWeight` (see design decisions above). Weights are versioned (each edit creates a new row) so every `CompositeScoreSnapshot` traces back to the exact formula used, supporting the Reproducibility non-functional requirement.
+Weights are versioned (each edit creates a new `ScoreWeightConfig` + `SourceWeight` rows) so every `CompositeScoreSnapshot` traces back to the exact formula used, supporting the Reproducibility non-functional requirement.
+
+**Design note (scalability fix):** weights are stored via the `SourceWeight` join table below, not as fixed columns on this entity. This keeps `ScoreWeightConfig` consistent with `DataSource` being a table rather than a hardcoded enum — adding a new data source later (Grand Vision) means adding new `DataSource` and `SourceWeight` rows, with no schema migration required. A fixed-column design (one column per source) would have required a migration every time a source was added or removed.
 
 Open detail to settle before FR-22 is implemented: whether weights must sum to 1.0, and whether the formula is a simple weighted sum (current assumption) — application-layer logic, not a schema question.
+
+---
+
+#### SourceWeight
+
+| Field | Type | Constraints | Notes |
+|---|---|---|---|
+| id | String (UUID) | PK, default uuid() | |
+| scoreWeightConfigId | String | FK → ScoreWeightConfig.id, required | |
+| dataSourceId | String | FK → DataSource.id, required | |
+| weight | Float | required | |
+
+**Relations:**
+- `scoreWeightConfig`: many SourceWeight → one ScoreWeightConfig
+- `dataSource`: many SourceWeight → one DataSource
+
+**Constraints:** unique composite on `(scoreWeightConfigId, dataSourceId)` — one weight per source per config.
+
+For V1, each active `ScoreWeightConfig` is expected to have exactly 3 `SourceWeight` rows (VIIRS, GHSL, RWI) — GDELT is never given a `SourceWeight` row, consistent with it being excluded from the composite score formula (see design decisions above).
 
 ---
 
@@ -170,7 +190,7 @@ Open detail to settle before FR-22 is implemented: whether weights must sum to 1
 | gridCellId | String | FK → GridCell.id, required | |
 | period | DateTime | required | Same period convention as SignalValue |
 | scoreWeightConfigId | String | FK → ScoreWeightConfig.id, required | |
-| compositeScore | Float | required | `(viirsWeight × viirs_norm) + (ghslWeight × ghsl_norm) + (rwiWeight × rwi_norm)` |
+| compositeScore | Float | required | Sum of `(weight × normalizedValue)` across each `SourceWeight`/`SignalValue` pair for VIIRS, GHSL, and RWI |
 | isComplete | Boolean | default true | False if VIIRS, GHSL, or RWI data was missing for this cell/period |
 | createdAt | DateTime | default now() | |
 
@@ -264,12 +284,15 @@ erDiagram
     }
     SCORE_WEIGHT_CONFIG {
         string id PK
-        float viirsWeight
-        float ghslWeight
-        float rwiWeight
         string createdById FK
         boolean isActive
         datetime createdAt
+    }
+    SOURCE_WEIGHT {
+        string id PK
+        string scoreWeightConfigId FK
+        string dataSourceId FK
+        float weight
     }
     COMPOSITE_SCORE_SNAPSHOT {
         string id PK
@@ -308,6 +331,8 @@ erDiagram
     GRID_CELL ||--o{ COMPOSITE_SCORE_SNAPSHOT : has
     GRID_CELL ||--o{ CASE_STUDY : "referenced by"
     SCORE_WEIGHT_CONFIG ||--o{ COMPOSITE_SCORE_SNAPSHOT : "used to compute"
+    SCORE_WEIGHT_CONFIG ||--o{ SOURCE_WEIGHT : contains
+    DATA_SOURCE ||--o{ SOURCE_WEIGHT : "weighted by"
 ```
 
 ---
@@ -323,6 +348,7 @@ erDiagram
 | CompositeScoreSnapshot(period) | Index — same time-slider access pattern |
 | PipelineRun(dataSourceId, startedAt) | Index — supports "most recent run per source" lookups for FR-19/FR-20 |
 | ScoreWeightConfig(isActive) | Only one config active at a time; enforced at the application layer |
+| SourceWeight(scoreWeightConfigId, dataSourceId) | Unique composite — one weight per source per config |
 | CaseStudy(isPublished) | Index — the public map and case studies list page only query published entries |
 | No cascade delete: DataSource → SignalValue | `onDelete: Restrict`; disable via `isActive` instead of deleting |
 | No cascade delete: GridCell → CompositeScoreSnapshot | `onDelete: Restrict`; historical scores must survive even if the grid is later regenerated |
