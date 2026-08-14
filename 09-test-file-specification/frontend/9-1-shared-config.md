@@ -1,5 +1,5 @@
 ## Project: Shadow Economy Map — Frontend Test Documentation: Shared / Config
-**Links back to:** [0. Frontend Conventions], [7b. Frontend File Structure], [9-1. Frontend Function-Level Spec: Shared/Config]
+**Links back to:** [0. Frontend Conventions], [7b. Frontend File Structure], [8-1. Frontend Function-Level Spec: Shared/Config]
 
 Covers every frontend file not owned by a single feature — types, constants, routing shell, the Axios instance, the one Zustand store, and the two non-feature-specific layouts. Each feature (Growth Map, Case Studies, Site Content, Admin Access, Data Pipeline, Case Study Curation) has its own test documentation file covering its hooks/pages/components.
 

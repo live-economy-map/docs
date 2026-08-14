@@ -1,5 +1,5 @@
 ## Project: Shadow Economy Map — Frontend Test Documentation: Growth Map & Exploration
-**Links back to:** [9-2. Frontend Function-Level Spec: Growth Map & Exploration], [9-1. Frontend Test Documentation: Shared/Config]
+**Links back to:** [8-2. Frontend Function-Level Spec: Growth Map & Exploration], [8-1. Frontend Test Documentation: Shared/Config]
 
 Per the Frontend Testing Guide: test-first, mirrors `src/` under `tests/`. Hooks are tested with `renderHook` + a fresh `QueryClientProvider` (via `tests/utils/renderWithProviders.tsx`), mocking `@/lib/axios` — never the network. Components/pages mock the hooks they call (`@/hooks/useMap`), never axios. `userEvent`, not `fireEvent`. This is the one feature with a documented cross-feature dependency (Case Studies' `CaseStudyMarker` renders inside `GrowthMapCanvas`) — see 9-3's cross-feature note; `GrowthMapCanvas`'s own tests here treat that marker as an opaque child and do not re-test it.
 
@@ -40,7 +40,7 @@ Per the Frontend Testing Guide: test-first, mirrors `src/` under `tests/`. Hooks
 |---|---|---|---|
 | Calls the correct endpoint | mocked `api.post` resolves `{parsedFilters: {...}, cells: [...]}` | `renderHook(() => useMapSearch())`, `.mutate('areas near Bole')` | `api.post` called with `('/map/search', {query: 'areas near Bole'})` |
 | A `parsedFilters: null` response is a mutation success, not an error | mocked `api.post` resolves `{parsedFilters: null, cells: []}` | `.mutate(query)`, await | `result.current.isSuccess === true`, `result.current.isError === false` — this is a **200**-shaped "couldn't understand" response per API spec 1.2, and `useMapSearch` must not treat it as a failure |
-| No cache invalidation on success | spy on `queryClient.invalidateQueries` | `.mutate(query)`, await success | `invalidateQueries` NOT called — search results are consumed directly by the caller, not cached, per Doc 9-2 |
+| No cache invalidation on success | spy on `queryClient.invalidateQueries` | `.mutate(query)`, await success | `invalidateQueries` NOT called — search results are consumed directly by the caller, not cached, per Doc 8-2 |
 | Genuine service-unreachable error surfaces as isError | mocked `api.post` rejects with an AxiosError (400, "Search is temporarily unavailable") | `.mutate(query)` | `result.current.isError === true` — this is the case that must stay distinguishable from the `parsedFilters: null` success case above, both at the hook layer and later at the `MapSearchBar` layer |
 
 ---
@@ -53,7 +53,7 @@ Per the Frontend Testing Guide: test-first, mirrors `src/` under `tests/`. Hooks
 | Renders raw-layer cells shaded by normalizedValue | props: `cells: RawLayerCell[]` | render | same per-cell count assertion, confirms the canvas accepts either shape per its documented prop union |
 | Clicking a cell calls onCellClick with its id | props include a known `cellId`; `onCellClick: vi.fn()` | `userEvent.click` the cell element | `onCellClick` called with that exact `cellId` |
 | Highlights the selectedCellId | props: `selectedCellId` set to one of the rendered cells' ids | render | that specific cell element carries the "selected" visual treatment; no other cell does |
-| Incomplete cells render with a distinct (hatched) treatment | props: one cell with `isComplete: false` among several `isComplete: true` cells (composite view only) | render | the incomplete cell has a distinguishing class/attribute the complete cells do not — per Doc 9-2, incomplete data must never be visually indistinguishable from a confident score |
+| Incomplete cells render with a distinct (hatched) treatment | props: one cell with `isComplete: false` among several `isComplete: true` cells (composite view only) | render | the incomplete cell has a distinguishing class/attribute the complete cells do not — per Doc 8-2, incomplete data must never be visually indistinguishable from a confident score |
 | Raw-layer cells never apply the incomplete-cell treatment | props: `RawLayerCell[]` (no `isComplete` field at all) | render | no cell renders the hatched/incomplete treatment — that visual state is defined only for the composite view's `isComplete` field |
 
 ---
@@ -65,7 +65,7 @@ Per the Frontend Testing Guide: test-first, mirrors `src/` under `tests/`. Hooks
 | Renders across availablePeriods | props: `availablePeriods: [3 ISO dates]`, `selectedPeriod` one of them | render | slider reflects the given range/position |
 | Interaction calls onChange with the selected period | props include `onChange: vi.fn()` | `userEvent` interact with the slider control (drag/step) | `onChange` called with a period from `availablePeriods` |
 | periodSubstituted renders an inline note | props: `periodSubstituted: true` | render | a note (e.g. "showing nearest available period") is visible next to the slider |
-| periodSubstituted false renders no note | props: `periodSubstituted: false` | render | no substitution note present — per Doc 9-2, this must never be silently absorbed either way; both states are asserted, not just the true case |
+| periodSubstituted false renders no note | props: `periodSubstituted: false` | render | no substitution note present — per Doc 8-2, this must never be silently absorbed either way; both states are asserted, not just the true case |
 | Component is fully controlled — no internal state drives its own position | props change `selectedPeriod` between two renders without any user interaction | re-render with new props | displayed position updates to match the new prop, confirming no local `useState` is overriding parent-controlled position |
 
 ---
@@ -75,7 +75,7 @@ Per the Frontend Testing Guide: test-first, mirrors `src/` under `tests/`. Hooks
 | Case | Setup | Action | Expected result |
 |---|---|---|---|
 | Calls useCellDetail with the given cellId and period | `vi.mock('@/hooks/useMap')`; mocked `useCellDetail` | render `<CellDetailPanel cellId={id} period={period} onClose={fn} />` | `useCellDetail` called with `(id, period)` |
-| Numeric fields render immediately while loading | mocked `useCellDetail` → `{isPending: true, data: undefined}` | render | a loading state is shown; per Doc 9-2 this may present as one overall skeleton (API returns the full payload in one response — see note below), not a separately-delayed AI summary field |
+| Numeric fields render immediately while loading | mocked `useCellDetail` → `{isPending: true, data: undefined}` | render | a loading state is shown; per Doc 8-2 this may present as one overall skeleton (API returns the full payload in one response — see note below), not a separately-delayed AI summary field |
 | Renders composite score, trend arrow, sparkline, and all 3 raw signals on success | mocked `useCellDetail` → success with full `CellDetail` data | render | composite score value, a trend indicator, a sparkline element, and 3 signal rows (VIIRS/GHSL/RWI) are all present |
 | aiSummary null renders a fallback line, not an empty section | mocked `useCellDetail` → success with `aiSummary: null`, all other fields populated | render | text reading a plain "Summary unavailable"-equivalent line is shown; no empty/missing section |
 | trend 'flat' renders a neutral indicator | mocked `useCellDetail` → success with `trend: 'flat'` | render | a neutral (not up/down) trend indicator is shown |

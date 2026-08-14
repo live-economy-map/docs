@@ -1,5 +1,5 @@
 ## Project: Shadow Economy Map — Frontend Test Documentation: Case Studies & Validation
-**Links back to:** [9-3. Frontend Function-Level Spec: Case Studies & Validation], [9-1. Frontend Test Documentation: Shared/Config], [9-2. Frontend Test Documentation: Growth Map & Exploration]
+**Links back to:** [8-3. Frontend Function-Level Spec: Case Studies & Validation], [8-1. Frontend Test Documentation: Shared/Config], [9-2. Frontend Test Documentation: Growth Map & Exploration]
 
 Per the Frontend Testing Guide: hooks mock `@/lib/axios`; pages/components mock this feature's own hooks (`@/hooks/useCaseStudies`), never axios. This feature owns the one clear cross-feature dependency in V1 (frontend conventions 2.5): `CaseStudyMarker` is *rendered inside* `GrowthMapCanvas`, but its data/hooks live and are tested here — 9-2's `GrowthMapCanvas` tests treat any marker as an opaque child and do not duplicate this file's coverage.
 

@@ -1,5 +1,5 @@
 ## Project: Shadow Economy Map — Frontend Test Documentation: Data Pipeline Management
-**Links back to:** [9-6. Frontend Function-Level Spec: Data Pipeline Management], [9-1. Frontend Test Documentation: Shared/Config], [9-5. Frontend Test Documentation: Admin Access]
+**Links back to:** [8-6. Frontend Function-Level Spec: Data Pipeline Management], [9-1. Frontend Test Documentation: Shared/Config], [9-5. Frontend Test Documentation: Admin Access]
 
 Per the Frontend Testing Guide: hooks mock `@/lib/axios`; pages/components mock this feature's own hooks (`@/hooks/useAdminPipeline`). Every hook/page in this module is Admin-authenticated (per API spec 5.1) — none of these tests need to simulate the auth guard itself (that's 9-1's `ProtectedRoute` coverage); they assume an authenticated context, consistent with how 9-1's guard tests set store state directly rather than logging in through the UI.
 
