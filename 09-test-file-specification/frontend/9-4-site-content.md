@@ -1,5 +1,5 @@
 ## Project: Shadow Economy Map — Frontend Test Documentation: Site Content & Onboarding
-**Links back to:** [9-4. Frontend Function-Level Spec: Site Content & Onboarding], [9-1. Frontend Test Documentation: Shared/Config], [9-2. Frontend Test Documentation: Growth Map & Exploration]
+**Links back to:** [8-4. Frontend Function-Level Spec: Site Content & Onboarding], [8-1. Frontend Test Documentation: Shared/Config], [9-2. Frontend Test Documentation: Growth Map & Exploration]
 
 Per the Frontend Testing Guide: hooks mock `@/lib/axios`; pages mock this feature's own hooks (`@/hooks/useContent`). `OnboardingOverlay` is the one component in this module with no API dependency of its own — it lives in `src/components/content/` and is documented here, but is *rendered* inside `GrowthMapPage` (Growth Map feature), matching the cross-feature pattern already established for `CaseStudyMarker` in 9-3. Its own test file has no hook to mock; `GrowthMapPage.test.tsx` (9-2) treats it as an opaque child.
 

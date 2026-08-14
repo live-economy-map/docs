@@ -98,13 +98,13 @@ These features are specified consistently across the API, frontend architecture,
 
 | Feature                       |  API | Frontend | Backend Functions | Frontend Functions | Backend Tests | Frontend Tests |
 | ----------------------------- | :--: | :------: | :---------------: | :----------------: | :-----------: | :------------: |
-| **Shared / Configuration**    |   —  |     —    |       `8-1`       |        `9-1`       |     `9-1`     |      `9-1`     |
-| **Growth Map & Exploration**  | `01` |   `01`   |       `8-2`       |        `9-2`       |     `9-2`     |      `9-2`     |
-| **Case Studies & Validation** | `02` |   `02`   |       `8-3`       |        `9-3`       |     `9-3`     |      `9-3`     |
-| **Site Content & Onboarding** | `03` |   `03`   |       `8-4`       |        `9-4`       |     `9-4`     |      `9-4`     |
-| **Admin Access**              | `04` |   `04`   |       `8-5`       |        `9-5`       |     `9-5`     |      `9-5`     |
-| **Data Pipeline Management**  | `05` |   `05`   |       `8-6`       |        `9-6`       |     `9-6`     |      `9-6`     |
-| **Case Study Curation**       | `06` |   `06`   |       `8-7`       |        `9-7`       |     `9-7`     |      `9-7`     |
+| **Shared / Configuration**    |   —  |     —    |       `8-1`       |        `8-1`       |     `9-1`     |      `9-1`     |
+| **Growth Map & Exploration**  | `01` |   `01`   |       `8-2`       |        `8-2`       |     `9-2`     |      `9-2`     |
+| **Case Studies & Validation** | `02` |   `02`   |       `8-3`       |        `8-3`       |     `9-3`     |      `9-3`     |
+| **Site Content & Onboarding** | `03` |   `03`   |       `8-4`       |        `8-4`       |     `9-4`     |      `9-4`     |
+| **Admin Access**              | `04` |   `04`   |       `8-5`       |        `8-5`       |     `9-5`     |      `9-5`     |
+| **Data Pipeline Management**  | `05` |   `05`   |       `8-6`       |        `8-6`       |     `9-6`     |      `9-6`     |
+| **Case Study Curation**       | `06` |   `06`   |       `8-7`       |        `8-7`       |     `9-7`     |      `9-7`     |
 
 ### Public vs. Administrative Features
 

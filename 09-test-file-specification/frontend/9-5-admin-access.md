@@ -1,5 +1,5 @@
 ## Project: Shadow Economy Map — Frontend Test Documentation: Admin Access
-**Links back to:** [9-5. Frontend Function-Level Spec: Admin Access], [9-1. Frontend Test Documentation: Shared/Config]
+**Links back to:** [8-5. Frontend Function-Level Spec: Admin Access], [9-1. Frontend Test Documentation: Shared/Config]
 
 Per the Frontend Testing Guide: hooks mock `@/lib/axios` and the `adminAuth` store's `setAuth`/`clearAuth`; the page mocks the hooks. This is a High-Scrutiny module (Guide Section 12) — auth state, redirects, and the generic-401-error contract all repeat patterns the Guide's own worked eco-9.2.1 example already flags as easy to get subtly wrong (e.g. leaking field-specific errors on a deliberately generic backend message).
 
