@@ -156,42 +156,59 @@ Template's placeholder `DASHBOARD`/`USERS`-style entries removed entirely — re
 
 ### src/routes/index.tsx (modify)
 
+**Correction:** the previous version of this doc showed the classic `<BrowserRouter>`/`<Routes>`/`<Route>` component API. The actual template (arch doc v3.1, Section 2.5 / 9.1) uses the **data router API** — `createBrowserRouter` building a route-config array, mounted via `<RouterProvider>` in `src/App.tsx`, with per-route Suspense via the template's `withSuspense()` helper rather than one top-level `<Suspense>`. The block below matches that.
+
 ```tsx
-<BrowserRouter>
-  <Suspense fallback={<PageLoader />}>
-    <Routes>
-      {/* Public — no guard, PublicLayout */}
-      <Route element={<PublicLayout />}>
-        <Route path={ROUTES.HOME} element={<LandingPage />} />
-        <Route path={ROUTES.MAP} element={<GrowthMapPage />} />
-        <Route path={ROUTES.CASE_STUDIES} element={<CaseStudiesListPage />} />
-        <Route path={ROUTES.CASE_STUDY_DETAIL} element={<CaseStudyDetailPage />} />
-        <Route path={ROUTES.METHODOLOGY} element={<MethodologyPage />} />
-      </Route>
+import { createBrowserRouter } from 'react-router-dom';
+import { withSuspense } from './withSuspense'; // template helper, unchanged
+import PublicLayout from '@/components/layouts/PublicLayout';
+import AuthLayout from '@/components/layouts/AuthLayout';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
+import ProtectedRoute from './ProtectedRoute';
+import PublicRoute from './PublicRoute';
+import { ROUTES } from '@/constants';
+// ...lazy-loaded page imports, same as template convention
 
-      {/* Admin login only — PublicRoute + AuthLayout */}
-      <Route element={<PublicRoute />}>
-        <Route element={<AuthLayout />}>
-          <Route path={ROUTES.ADMIN_LOGIN} element={<AdminLoginPage />} />
-        </Route>
-      </Route>
+export const router = createBrowserRouter([
+  {
+    element: <PublicLayout />,
+    children: [
+      { path: ROUTES.HOME, element: withSuspense(LandingPage) },
+      { path: ROUTES.MAP, element: withSuspense(GrowthMapPage) },
+      { path: ROUTES.CASE_STUDIES, element: withSuspense(CaseStudiesListPage) },
+      { path: ROUTES.CASE_STUDY_DETAIL, element: withSuspense(CaseStudyDetailPage) },
+      { path: ROUTES.METHODOLOGY, element: withSuspense(MethodologyPage) },
+    ],
+  },
+  {
+    element: <PublicRoute />,
+    children: [
+      {
+        element: <AuthLayout />,
+        children: [{ path: ROUTES.ADMIN_LOGIN, element: withSuspense(AdminLoginPage) }],
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <DashboardLayout />,
+        children: [
+          { path: ROUTES.ADMIN_DASHBOARD, element: withSuspense(AdminDashboardPage) },
+          { path: ROUTES.ADMIN_PIPELINE, element: withSuspense(PipelineManagementPage) },
+          { path: ROUTES.ADMIN_WEIGHT_CONFIGS, element: withSuspense(WeightConfigPage) },
+          { path: ROUTES.ADMIN_CASE_STUDIES, element: withSuspense(CaseStudyCurationPage) },
+        ],
+      },
+    ],
+  },
+  { path: '*', element: withSuspense(NotFoundPage) },
+]);
 
-      {/* Admin area — ProtectedRoute + DashboardLayout */}
-      <Route element={<ProtectedRoute />}>
-        <Route element={<DashboardLayout />}>
-          <Route path={ROUTES.ADMIN_DASHBOARD} element={<AdminDashboardPage />} />
-          <Route path={ROUTES.ADMIN_PIPELINE} element={<PipelineManagementPage />} />
-          <Route path={ROUTES.ADMIN_WEIGHT_CONFIGS} element={<WeightConfigPage />} />
-          <Route path={ROUTES.ADMIN_CASE_STUDIES} element={<CaseStudyCurationPage />} />
-        </Route>
-      </Route>
-
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
-  </Suspense>
-</BrowserRouter>
+export default router;
 ```
-All pages remain `React.lazy()`-loaded per the template's convention. `PublicRoute`'s "redirect away if already authenticated" behavior applies only to `/admin/login` — there is no equivalent public-facing redirect anywhere else, since public routes have no logged-in state to redirect away from.
+All pages remain lazy-loaded, now via `withSuspense()` per-route rather than one shared `<Suspense>` boundary. `RouterProvider router={router}` is mounted in `src/App.tsx`, per the template's existing wiring — this project does not change that part. `PublicRoute`'s "redirect away if already authenticated" behavior applies only to `/admin/login` — there is no equivalent public-facing redirect anywhere else, since public routes have no logged-in state to redirect away from. `Outlet`/`Navigate` inside each layout/guard component are unchanged from the template.
 
 ---
 
@@ -211,9 +228,15 @@ No `useAuth.ts` hook exists in this project — there's no generic "auth" concep
 
 | Field | Detail |
 |---|---|
-| Change | Template ships this as a placeholder wrapper. Add admin-facing nav: links to `ROUTES.ADMIN_DASHBOARD`, `ROUTES.ADMIN_PIPELINE`, `ROUTES.ADMIN_WEIGHT_CONFIGS`, `ROUTES.ADMIN_CASE_STUDIES`, and a "Logout" action calling `useAdminLogout().mutate()` |
-| Behavior | Purely presentational nav additions — renders `<Outlet />` for the matched child route, unchanged from the template's own structure |
+| Change | Template ships this as a placeholder wrapper. This project composes it from `components/common/AdminSidebar.tsx` (nav to `ROUTES.ADMIN_DASHBOARD`, `ROUTES.ADMIN_PIPELINE`, `ROUTES.ADMIN_WEIGHT_CONFIGS`, `ROUTES.ADMIN_CASE_STUDIES`, and Logout calling `useAdminLogout().mutate()`) plus an inline mobile header — full component spec in `9-ui-foundation-spec.md` §9.4–9.5 |
+| Behavior | Layout itself stays thin: renders `AdminSidebar`, the mobile header, and `<Outlet />` for the matched child route. The active-link logic and Logout wiring live in `AdminSidebar`, not here |
 | Edge cases | None — no badge counts or live data in this nav, unlike the e-commerce template's cart-badge case |
+
+---
+
+### src/styles/globals.css, index.html, components/ui/*, components/common/* (new/modify)
+
+Design tokens, font loading, and the shared component set (`TopNavBar`, `Footer`, `AdminSidebar`, `StatusBadge`, `EmptyState`, themed `ui/` primitives) are specified in full in **`9-ui-foundation-spec.md`** — not duplicated here. That doc also defines the required build order for this layer, which precedes everything in this file's routing/layout sections.
 
 ---
 

@@ -1,6 +1,8 @@
 ## Project: Shadow Economy Map — Frontend Folder & File Structure
 This is the file list to check every PR against. Base structure inherited from `template-react`. Per the frontend template's standing rule, every hook gets a mirrored test file under `tests/`.
 
+**See `9-ui-foundation-spec.md` for the full design-token, common-component, and layout spec — this file only lists what exists where; that file defines what each foundation piece contains and why.**
+
 ---
 
 ### 7.1 Pages
@@ -33,11 +35,20 @@ This is the file list to check every PR against. Base structure inherited from `
 
 | File | Type | Purpose | Depends on |
 |---|---|---|---|
-| src/components/layouts/PublicLayout.tsx | Layout | public chrome, no auth awareness — new addition beyond the base template (see frontend conventions 0.1) | — |
-| src/components/layouts/DashboardLayout.tsx | Layout | modified from template placeholder: admin nav (Pipeline, Weight Configs, Case Studies, Logout) | useAdminLogout |
+| src/components/layouts/PublicLayout.tsx | Layout | public chrome, no auth awareness — new addition beyond the base template (see frontend conventions 0.1) | TopNavBar, Footer |
+| src/components/layouts/DashboardLayout.tsx | Layout | modified from template placeholder: composes AdminSidebar + mobile header, renders `<Outlet />` | AdminSidebar |
 | src/routes/index.tsx | Routes | modified to add PublicLayout (ungated) alongside the template's existing AuthLayout/PublicRoute and DashboardLayout/ProtectedRoute pairs | all layouts/guards |
 
 `AuthLayout`, `ProtectedRoute`, `PublicRoute` are used unmodified from the base template.
+
+**Common nav/chrome components (new — see `9-ui-foundation-spec.md` §9.4 for full spec):**
+
+| File | Type | Purpose | Depends on |
+|---|---|---|---|
+| src/components/common/TopNavBar.tsx | Component | public nav, active-link styling via `useLocation()` | ROUTES |
+| src/components/common/Footer.tsx | Component | static public footer | — |
+| src/components/common/AdminSidebar.tsx | Component | 220px admin sidebar nav + active-link styling + Logout action. No "Settings" link — present in Stitch design but not backed by any spec'd route | useAdminLogout, ROUTES |
+| src/components/common/StatusBadge.tsx | Component | consolidated success/warning/error pill, replaces per-page hardcoded badge colors | — |
 
 ---
 
@@ -88,6 +99,10 @@ This is the file list to check every PR against. Base structure inherited from `
 | File | Type | Purpose |
 |---|---|---|
 | src/components/common/EmptyState.tsx | Component | generic empty-state message + optional CTA |
+| src/components/common/TopNavBar.tsx | Component | public nav — see layouts table above |
+| src/components/common/Footer.tsx | Component | public footer — see layouts table above |
+| src/components/common/AdminSidebar.tsx | Component | admin sidebar nav — see layouts table above |
+| src/components/common/StatusBadge.tsx | Component | success/warning/error pill — see layouts table above |
 
 ---
 
@@ -131,35 +146,52 @@ This is the file list to check every PR against. Base structure inherited from `
 
 ### 7.7 File Creation Order
 
-1. src/types/index.ts (modify)
-2. src/constants/index.ts (modify)
-3. src/store/adminAuth.store.ts
-4. src/lib/axios.ts (modify)
-5. src/components/layouts/PublicLayout.tsx
-6. src/components/layouts/DashboardLayout.tsx (modify)
-7. src/routes/index.tsx (modify — depends on all layouts/guards above)
-8. src/hooks/useContent.ts
-9. src/components/content/HighlightStats.tsx
-10. src/pages/LandingPage.tsx
-11. src/hooks/useMap.ts
-12. src/components/map/GrowthMapCanvas.tsx, TimeSlider.tsx, LayerToggle.tsx, MapSearchBar.tsx
-13. src/hooks/useCaseStudies.ts
-14. src/components/case-studies/CaseStudyMarker.tsx, CaseStudyDetailPanel.tsx, BeforeAfterSlider.tsx
-15. src/components/map/CellDetailPanel.tsx (depends on useMap)
-16. src/components/content/OnboardingOverlay.tsx
-17. src/pages/map/GrowthMapPage.tsx
-18. src/components/case-studies/CaseStudyListRow.tsx
-19. src/pages/CaseStudiesListPage.tsx, CaseStudyDetailPage.tsx
-20. src/components/content/DataSourceCard.tsx, LimitationsList.tsx
-21. src/pages/MethodologyPage.tsx
-22. src/hooks/useAdminAuth.ts
-23. src/pages/admin/AdminLoginPage.tsx
-24. src/hooks/useAdminPipeline.ts
-25. src/components/admin-pipeline/SourceHealthCard.tsx, PipelineRunsTable.tsx, RecomputeButton.tsx
-26. src/pages/admin/AdminDashboardPage.tsx, PipelineManagementPage.tsx
-27. src/components/admin-pipeline/WeightConfigForm.tsx, WeightConfigHistory.tsx
-28. src/pages/admin/WeightConfigPage.tsx
-29. src/hooks/useAdminCaseStudies.ts
-30. src/components/admin-case-studies/CaseStudyTable.tsx, CaseStudyForm.tsx, DiscoveryPanel.tsx
-31. src/pages/admin/CaseStudyCurationPage.tsx
-32. Matching test files for every hook, per the standing rule in §7.5
+**Phase A — UI Foundation (see `9-ui-foundation-spec.md` §9.7 for full reasoning; must complete before Phase B)**
+
+1. src/styles/globals.css (modify — design tokens)
+2. index.html (modify — font links)
+3. src/lib/utils.ts (unchanged from template)
+4. src/components/ui/: Button, Card, Input, Label, Checkbox, Badge
+5. src/components/common/StatusBadge.tsx, EmptyState.tsx
+
+**Phase B — Shared Config (routing/state must exist before nav components can build ROUTES-aware active-link logic)**
+
+6. src/types/index.ts (modify)
+7. src/constants/index.ts (modify)
+8. src/store/adminAuth.store.ts
+9. src/lib/axios.ts (modify)
+
+**Phase C — Chrome & Layouts**
+
+10. src/components/common/TopNavBar.tsx, Footer.tsx, AdminSidebar.tsx
+11. src/components/layouts/PublicLayout.tsx
+12. src/components/layouts/DashboardLayout.tsx (modify)
+13. src/routes/index.tsx (modify — depends on all layouts/guards above)
+
+**Phase D — Features (unchanged from original order, renumbered)**
+
+14. src/hooks/useContent.ts
+15. src/components/content/HighlightStats.tsx
+16. src/pages/LandingPage.tsx
+17. src/hooks/useMap.ts
+18. src/components/map/GrowthMapCanvas.tsx, TimeSlider.tsx, LayerToggle.tsx, MapSearchBar.tsx
+19. src/hooks/useCaseStudies.ts
+20. src/components/case-studies/CaseStudyMarker.tsx, CaseStudyDetailPanel.tsx, BeforeAfterSlider.tsx
+21. src/components/map/CellDetailPanel.tsx (depends on useMap)
+22. src/components/content/OnboardingOverlay.tsx
+23. src/pages/map/GrowthMapPage.tsx
+24. src/components/case-studies/CaseStudyListRow.tsx
+25. src/pages/CaseStudiesListPage.tsx, CaseStudyDetailPage.tsx
+26. src/components/content/DataSourceCard.tsx, LimitationsList.tsx
+27. src/pages/MethodologyPage.tsx
+28. src/hooks/useAdminAuth.ts
+29. src/pages/admin/AdminLoginPage.tsx
+30. src/hooks/useAdminPipeline.ts
+31. src/components/admin-pipeline/SourceHealthCard.tsx, PipelineRunsTable.tsx, RecomputeButton.tsx
+32. src/pages/admin/AdminDashboardPage.tsx, PipelineManagementPage.tsx
+33. src/components/admin-pipeline/WeightConfigForm.tsx, WeightConfigHistory.tsx
+34. src/pages/admin/WeightConfigPage.tsx
+35. src/hooks/useAdminCaseStudies.ts
+36. src/components/admin-case-studies/CaseStudyTable.tsx, CaseStudyForm.tsx, DiscoveryPanel.tsx
+37. src/pages/admin/CaseStudyCurationPage.tsx
+38. Matching test files for every hook, per the standing rule in §7.5
